@@ -4,30 +4,30 @@ import com.fasterxml.jackson.annotation.JsonIgnore
 import com.fasterxml.jackson.annotation.JsonProperty
 import com.fasterxml.jackson.databind.ObjectMapper
 import me.victoralan.Hash
-import me.victoralan.blockchain.blockitems.BlockItem
 import me.victoralan.blockchain.blockitems.Transaction
+import me.victoralan.blockchain.blockitems.MoneyTransaction
 import me.victoralan.entities.User
 
 class BlockChain(val difficulty: Int = 5, val reward: Float = 1f, val blockSize: Int = 1) {
 
     @JsonProperty
     var chain: ArrayList<Block> = ArrayList()
-    var pendingBlockItems: ArrayList<BlockItem> = ArrayList()
+    var pendingTransactions: ArrayList<Transaction> = ArrayList()
 
     init {
         addGenesisBlock()
     }
         fun minePendingBlockItems(miner: User){
 
-            if (pendingBlockItems.size >= blockSize) {
-                for (i in 0..pendingBlockItems.size step blockSize) {
+            if (pendingTransactions.size >= blockSize) {
+                for (i in 0..pendingTransactions.size step blockSize) {
                     println(i)
                     var end = i + blockSize
-                    if (i >= pendingBlockItems.size) {
-                        end = pendingBlockItems.size
+                    if (i >= pendingTransactions.size) {
+                        end = pendingTransactions.size
                     }
-                    val transactionSlice: ArrayList<BlockItem> = pendingBlockItems.toArray().copyOfRange(i, end)
-                        .toCollection(ArrayList()) as ArrayList<BlockItem>
+                    val transactionSlice: ArrayList<Transaction> = pendingTransactions.toArray().copyOfRange(i, end)
+                        .toCollection(ArrayList()) as ArrayList<Transaction>
 
                     val newBlock = Block(transactionSlice, System.nanoTime(), chain.size.toLong())
 
@@ -38,14 +38,14 @@ class BlockChain(val difficulty: Int = 5, val reward: Float = 1f, val blockSize:
                 }
                 println("Mining BlockItems Success!")
 
-                val rewardTransaction = Transaction(User("rewards"), miner, reward)
-                pendingBlockItems.add(rewardTransaction)
+                val rewardTransaction = MoneyTransaction(User("rewards"), miner, reward)
+                pendingTransactions.add(rewardTransaction)
             } else{
-                println("Not inof transactions to mine, need at least $blockSize and have ${pendingBlockItems.size}")
+                println("Not inof transactions to mine, need at least $blockSize and have ${pendingTransactions.size}")
             }
         }
-    fun addBlockItem(bObject: BlockItem){
-        pendingBlockItems.add(bObject)
+    fun addTransaction(bObject: Transaction){
+        pendingTransactions.add(bObject)
     }
     /**
      * Adds a block to the chain, if the is no previous block then the hash will be an empty string.
@@ -68,7 +68,7 @@ class BlockChain(val difficulty: Int = 5, val reward: Float = 1f, val blockSize:
      * Adds the first block that is just empty
      */
     private fun addGenesisBlock(){
-        val transactions = ArrayList<BlockItem>()
+        val transactions = ArrayList<Transaction>()
         val genesisBlock = Block(transactions, System.nanoTime(), 0)
         genesisBlock.previousBlockHash = Hash.empty()
         chain.add(genesisBlock)

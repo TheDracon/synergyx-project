@@ -1,27 +1,37 @@
-package me.victoralan.blockchain.blockitems
+package me.victoralan.software.wallet
 
 import com.fasterxml.jackson.core.JsonGenerator
 import com.fasterxml.jackson.core.JsonParser
-import com.fasterxml.jackson.databind.*
+import com.fasterxml.jackson.core.ObjectCodec
+import com.fasterxml.jackson.databind.DeserializationContext
+import com.fasterxml.jackson.databind.JsonDeserializer
+import com.fasterxml.jackson.databind.JsonSerializer
+import com.fasterxml.jackson.databind.SerializerProvider
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize
 import com.fasterxml.jackson.databind.annotation.JsonSerialize
-import me.victoralan.Hash
-import me.victoralan.crypto.Base58
-import me.victoralan.crypto.SHA3
+import com.fasterxml.jackson.databind.deser.std.StdDeserializer
+import com.fasterxml.jackson.databind.node.ObjectNode
+import com.fasterxml.jackson.databind.ser.std.StdSerializer
+import me.victoralan.crypto.encoder.Base58
 import java.io.Serializable
 import java.security.KeyFactory
 import java.security.MessageDigest
 import java.security.PublicKey
 import java.security.SecureRandom
+import java.security.interfaces.ECPrivateKey
+import java.security.interfaces.ECPublicKey
+import java.security.spec.PKCS8EncodedKeySpec
 import java.security.spec.X509EncodedKeySpec
 
-class Address(val publicKey: PublicKey, var address: String, override var time: Long = System.nanoTime()): BlockItem(System.nanoTime()),
-    Serializable {
+@JsonSerialize(using = AddressSerializer::class)
+@JsonDeserialize(using = AddressDeserializer::class)
+class Address(val publicKey: PublicKey,
+              var address: String) : Serializable{
     constructor(publicKey: PublicKey, version: Int) : this(publicKey, "") {
         address = generateAddress(version, publicKey)
     }
 
-    fun generateAddress(version: Int, publicKey: PublicKey): String {
+    private fun generateAddress(version: Int, publicKey: PublicKey): String {
         // Step 1: Perform SHA-256 hash on the public key
         val sha256 = MessageDigest.getInstance("SHA-256")
         val hash1 = sha256.digest(publicKey.encoded)
@@ -52,29 +62,29 @@ class Address(val publicKey: PublicKey, var address: String, override var time: 
         // Step 7: Encode the result of Step 6 using Base58Check encoding
         return Base58.encode(hash6)
     }
-
-    override fun calculateHash(): Hash {
-        return Hash(SHA3.hashString("$publicKey $address $time"))
+    override fun toString(): String {
+        return "Address(publicKey=${Base58.encode(publicKey.encoded)}, address=$address)"
     }
-
 }
-
 class AddressSerializer : JsonSerializer<Address>(){
-    override fun serialize(address: Address, jsonGenerator: JsonGenerator, serializerProvider: SerializerProvider) {
-        jsonGenerator.writeStartObject()
-        jsonGenerator.writeObjectField("publicKey", Base58.encode(address.publicKey.encoded))
-        jsonGenerator.writeStringField("address", address.address)
-        jsonGenerator.writeEndObject()
+    override fun serialize(value: Address, gen: JsonGenerator, provider: SerializerProvider) {
+        gen.writeStartObject()
+        gen.writeStringField("address", value.address)
+        gen.writeBinaryField("publicKey", value.publicKey.encoded)
+        gen.writeEndObject()
     }
-
 }
-class AddressDeserializer : JsonDeserializer<Address>() {
-    override fun deserialize(jsonParser: JsonParser, deserializationContext: DeserializationContext): Address {
-        val node: JsonNode = jsonParser.codec.readTree(jsonParser)
-        val keyFactory: KeyFactory = KeyFactory.getInstance("EC")
-        val publicKeySpec = X509EncodedKeySpec(Base58.decode(node.get("publicKey").asText()))
-        val publicKey: PublicKey = keyFactory.generatePublic(publicKeySpec)
+
+class AddressDeserializer : JsonDeserializer<Address>(){
+    override fun deserialize(p: JsonParser, ctxt: DeserializationContext): Address {
+        val codec: ObjectCodec = p.codec
+        val node: ObjectNode = codec.readTree(p)
         val address = node.get("address").asText()
-        return Address(publicKey, address)
+        val publicKey = node.get("publicKey").binaryValue()
+        val keyFactory: KeyFactory = KeyFactory.getInstance("EC")
+        val publicKeySpec: X509EncodedKeySpec = X509EncodedKeySpec(publicKey)
+        val realPublicKey: ECPublicKey = keyFactory.generatePublic(publicKeySpec) as ECPublicKey
+
+        return Address(realPublicKey, address)
     }
 }

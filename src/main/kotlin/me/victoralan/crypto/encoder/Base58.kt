@@ -1,4 +1,4 @@
-package me.victoralan.crypto
+package me.victoralan.crypto.encoder
 
 import java.io.UnsupportedEncodingException
 import java.math.BigInteger

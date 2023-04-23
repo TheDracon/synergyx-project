@@ -6,7 +6,7 @@ class RSADecryptor(private val rsaPrivateKey: RSAPrivateKey) {
 
 
     fun decryptBytes(encryptedMessage: ByteArray) : ByteArray{
-        val messageAsBigInteger: BigInteger = BigInteger(1, (encryptedMessage))
+        val messageAsBigInteger = BigInteger(1, (encryptedMessage))
 
         val decryptedMessage: BigInteger = messageAsBigInteger.modPow(rsaPrivateKey.d, rsaPrivateKey.n)
 
@@ -18,7 +18,7 @@ class RSADecryptor(private val rsaPrivateKey: RSAPrivateKey) {
         return decryptedMessage.toByteArray()
     }
     fun decryptString(message: String) : String{
-        val messageAsBigInteger: BigInteger = BigInteger(1, (Base64.getDecoder().decode(message.toByteArray())))
+        val messageAsBigInteger = BigInteger(1, (Base64.getDecoder().decode(message.toByteArray())))
         val encryptedMessage: BigInteger = messageAsBigInteger.modPow(rsaPrivateKey.d, rsaPrivateKey.n)
         return encryptedMessage.toByteArray().decodeToString()
     }

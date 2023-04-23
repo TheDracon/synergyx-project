@@ -1,5 +1,6 @@
 package rsa.keys.generator
 
+import me.victoralan.crypto.SHA3
 import rsa.keys.RSAKeyPair
 import rsa.keys.RSAPrivateKey
 import rsa.keys.RSAPublicKey
@@ -43,6 +44,9 @@ class RSAKeyGen {
             val privateKey: RSAPrivateKey = RSAPrivateKey(n, d)
 
             return RSAKeyPair(publicKey, privateKey)
+        }
+        fun generateKeyPair(passphrase: String, bitLength: Int) : RSAKeyPair{
+            return generateKeyPair(Random(BigInteger(SHA3.hashString(passphrase)).toLong()), bitLength)
         }
         private fun generatePublicExponent(phi: BigInteger, bitLength: Int, random: Random): BigInteger {
             var e: BigInteger

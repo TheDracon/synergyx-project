@@ -1,34 +1,27 @@
 package me.victoralan
 
-import me.victoralan.crypto.Base58.decodeChecked
 import me.victoralan.crypto.ecdsa.ECDSA
+import me.victoralan.crypto.encoder.Base58
 import me.victoralan.software.wallet.Wallet
-import java.util.*
+import me.victoralan.software.wallet.WalletManager
+import rsa.keys.generator.RSAKeyGen
+import java.io.File
+import java.io.FileOutputStream
 
 
 fun main(args: Array<String>) {
 
-    val wallet = Wallet(ECDSA().generateKeyPair())
-    var generatedAddress = wallet.generateAddress(231)
-    // decode the address from Base58Check encoding
-    // decode the address from Base58Check encoding
-    val decoded = decodeChecked(generatedAddress)
+    val publicKey = RSAKeyGen.generateKeyPair("thedracon", 2048).public
 
-    // extract the version and the public key hash
+    val wallet = Wallet(ECDSA().generateKeyPair(), publicKey)
+    wallet.createAddress(10)
+    wallet.createAddress(21)
+    wallet.generateQRCodes()
+    wallet.saveWallet()
 
-    // extract the version and the public key hash
-    val version = decoded[0]+128
-    val pubKeyHash = Arrays.copyOfRange(decoded, 1, decoded.size)
-    println(version)
-    println(pubKeyHash.decodeToString())
-//    val blockChain = BlockChain(difficulty = 2, blockSize = 100)
-//    val transactions = ArrayList<Transaction>()
-//    for (i in 1..100){
-//        transactions.add(Transaction(User("User$i"), User("User$i"), i.toFloat()))
-//    }
-//
-//    transactions.forEach({ x -> blockChain.addTransaction(x)})
-//
-//    blockChain.minePendingTransactions(User("The User"))
-//    println(blockChain.toString())
+    val walletManager = WalletManager()
+    val newWallet = walletManager.loadWallet(File("./wallet.synergyx"), "thedracon")
+
+    println(newWallet.rsaEncryptionKey.toString() == wallet.rsaEncryptionKey.toString())
+
 }
