@@ -2,6 +2,7 @@ package me.victoralan.crypto.ecdsa
 
 import java.security.*
 import java.security.spec.ECGenParameterSpec
+import java.util.*
 
 
 class ECDSA {
@@ -15,7 +16,7 @@ class ECDSA {
     // Sign a message using the private key
     fun signMessage(message: ByteArray, privateKey: PrivateKey): ByteArray {
         val signature: Signature = Signature.getInstance("SHA256withECDSA")
-        signature.initSign(privateKey)
+        signature.initSign(privateKey , SecureRandom("".toByteArray()))
         signature.update(message)
         return signature.sign()
     }
