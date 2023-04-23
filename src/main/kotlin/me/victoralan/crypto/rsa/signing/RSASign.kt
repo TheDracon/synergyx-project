@@ -1,7 +1,7 @@
 package rsa.signing
 
+import me.victoralan.crypto.SHA3
 import rsa.keys.RSAPrivateKey
-import sha.SHA3
 import java.math.BigInteger
 import java.util.*
 

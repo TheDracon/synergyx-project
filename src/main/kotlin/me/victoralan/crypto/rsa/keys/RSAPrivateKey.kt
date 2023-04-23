@@ -2,7 +2,6 @@ package rsa.keys
 
 import rsa.utils.ArrayUtils.Companion.removeSubarrayFromArray
 import rsa.utils.ArrayUtils.Companion.split
-import java.lang.RuntimeException
 import java.math.BigInteger
 import java.util.*
 

@@ -5,10 +5,11 @@ import com.fasterxml.jackson.databind.JsonSerializer
 import com.fasterxml.jackson.databind.SerializerProvider
 import com.fasterxml.jackson.databind.annotation.JsonSerialize
 import me.victoralan.crypto.SHA3
+import java.io.Serializable
 import java.math.BigInteger
 
 @JsonSerialize(using = HashSerializer::class)
-class Hash {
+class Hash : Serializable{
 
     val value: ByteArray
 

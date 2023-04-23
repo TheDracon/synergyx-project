@@ -1,7 +1,5 @@
 package rsa.utils
 
-import java.math.BigInteger
-
 class ArrayUtils {
 
     companion object{

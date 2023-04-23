@@ -1,10 +1,8 @@
 package rsa.signing
 
-import rsa.keys.RSAPrivateKey
+import me.victoralan.crypto.SHA3
 import rsa.keys.RSAPublicKey
-import sha.SHA3
 import java.math.BigInteger
-import java.security.MessageDigest
 import java.util.*
 
 class RSAVerify(private val rsaPublicKey: RSAPublicKey) {
