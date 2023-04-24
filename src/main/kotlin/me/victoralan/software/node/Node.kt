@@ -56,7 +56,7 @@ class Node(walletPassword: String) {
 
                     if (block.previousBlockHash.value.contentEquals(blockChain.getLastBlock().hash.value)){
                         println("test5")
-
+                        if (block.coinBaseTransaction.balance != blockChain.reward) return false
                         //CHECK IF TRANSACTIONS OF BLOCK ARE VALID
                         for (transaction in block.transactions){
                             if (!isTransactionValid(transaction)){
