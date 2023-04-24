@@ -1,7 +1,12 @@
 package me.victoralan
 
-import me.victoralan.blockchain.blockitems.MoneyTransaction
-import me.victoralan.crypto.encoder.Base58
+import me.victoralan.blockchain.Block
+import me.victoralan.blockchain.transactions.MoneyTransaction
+import me.victoralan.blockchain.transactions.CoinBaseTransaction
+import me.victoralan.blockchain.transactions.DebugTransaction
+import me.victoralan.blockchain.transactions.Transaction
+import me.victoralan.crypto.ecdsa.ECDSA
+import me.victoralan.crypto.encoder.Base58.encode
 import me.victoralan.software.node.Node
 import me.victoralan.software.wallet.Wallet
 
@@ -9,32 +14,61 @@ import me.victoralan.software.wallet.Wallet
 fun main() {
 
     val node = Node("thedracon")
-    val wallet = Wallet(password = "password1")
-    val wallet2 = Wallet(password = "password2")
-    val wallet3 = Wallet(password = "password3")
+    val wallet = Wallet(ECDSA().generateKeyPair(), "password1")
+    val wallet2 = Wallet(ECDSA().generateKeyPair(), "password2")
+    val wallet3 = Wallet(ECDSA().generateKeyPair(), "password3")
     wallet.createAddress(0)
     wallet2.createAddress(1)
     wallet3.createAddress(2)
-    // WALLLET 1 SENDS WALLET 2 10 synergyx
-    var transaction = MoneyTransaction(wallet.addresses[0], wallet2.addresses[0].address, 10f)
-    println(transaction.senderAddress?.publicKey?.let { Base58.encode(it.encoded) })
+    val transactions = ArrayList<Transaction>()
+    transactions.add(DebugTransaction(wallet.addresses[0], 100f))
+    transactions.add(DebugTransaction(wallet2.addresses[0], 100f))
+    transactions.add(DebugTransaction(wallet3.addresses[0], 100f))
+
+    val block = Block(transactions, System.nanoTime(), 0)
+
+    node.onNewBlock(block)
+
+    /**
+     * w1 => -10 +1 => 300-9
+     * w2 => +10 -5 +1 => 300+6
+     * w3 => +5 -1 -1 => 300+3
+     */
+
+    var transaction = MoneyTransaction(wallet.addresses[0], wallet2.addresses[0].address, 10f, System.nanoTime())
     transaction = wallet.sign(transaction)
 
-    // WALLLET 2 SENDS WALLET 3 5 synergyx
-    var transaction2 = MoneyTransaction(wallet2.addresses[0], wallet3.addresses[0].address, 5f)
+    var transaction2 = MoneyTransaction(wallet2.addresses[0], wallet3.addresses[0].address, 5f, System.nanoTime())
     transaction2 = wallet2.sign(transaction2)
-    // WALLLET 3 SENDS WALLET 1 1 synergyx
-    var transaction3 = MoneyTransaction(wallet3.addresses[0], wallet.addresses[0].address, 1f)
+
+    var transaction3 = MoneyTransaction(wallet3.addresses[0], wallet.addresses[0].address, 1f, System.nanoTime())
     transaction3 = wallet3.sign(transaction3)
-    // WALLLET 3 SENDS WALLET 2 1 synergyx
-    var transaction4 = MoneyTransaction(wallet3.addresses[0], wallet2.addresses[0].address, 1f)
+
+    var transaction4 = MoneyTransaction(wallet3.addresses[0], wallet2.addresses[0].address, 1f, System.nanoTime())
     transaction4 = wallet3.sign(transaction4)
+
+    var transaction5 = MoneyTransaction(wallet.addresses[0], wallet2.addresses[0].address, 25f, System.nanoTime())
+    transaction5 = wallet.sign(transaction5)
+
+    var transaction6 = MoneyTransaction(wallet.addresses[0], wallet2.addresses[0].address, 15f, System.nanoTime())
+    transaction6 = wallet.sign(transaction6)
+
+    var transaction7 = MoneyTransaction(wallet3.addresses[0], wallet.addresses[0].address, -1000f, System.nanoTime())
+    transaction7 = wallet3.sign(transaction7)
+
 
     node.startMineLoop()
     node.onNewTransaction(transaction)
     node.onNewTransaction(transaction2)
-    Thread.sleep(10000)
     node.onNewTransaction(transaction3)
     node.onNewTransaction(transaction4)
+    node.onNewTransaction(transaction5)
+    node.onNewTransaction(transaction6)
+    node.onNewTransaction(transaction7)
+    Thread.sleep(5000)
+    println("FINAL RESULTS OF TEST: ")
+    println("WALLET 1 BALANCE: ${node.getBalanceOfAddress(wallet.addresses.first().address, true)} SRX")
+    println("WALLET 2 BALANCE: ${node.getBalanceOfAddress(wallet2.addresses.first().address, true)} SRX")
+    println("WALLET 3 BALANCE: ${node.getBalanceOfAddress(wallet3.addresses.first().address, true)} SRX")
 
 }

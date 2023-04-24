@@ -1,7 +1,6 @@
-package me.victoralan.blockchain.blockitems
+package me.victoralan.blockchain.transactions
 
 import me.victoralan.Hash
-import java.io.Closeable
 import java.io.Serializable
 
 interface Transaction : Serializable{

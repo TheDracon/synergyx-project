@@ -15,7 +15,6 @@ import java.io.Serializable
 import java.security.KeyFactory
 import java.security.MessageDigest
 import java.security.PublicKey
-import java.security.SecureRandom
 import java.security.interfaces.ECPublicKey
 import java.security.spec.X509EncodedKeySpec
 
@@ -37,7 +36,7 @@ class Address(val publicKey: PublicKey,
         val hash2 = sha3256.digest(hash1)
 
         // Step 3: Add version byte to the front of the result of Step 2
-        val versionByte = byteArrayOf((version-128).toByte(), SecureRandom(version.toBigInteger().toByteArray()).nextInt().toByte())
+        val versionByte = byteArrayOf((version-128).toByte(), version.toByte())
         val hash3 = ByteArray(versionByte.size + hash2.size)
         System.arraycopy(versionByte, 0, hash3, 0, versionByte.size)
         System.arraycopy(hash2, 0, hash3, versionByte.size, hash2.size)

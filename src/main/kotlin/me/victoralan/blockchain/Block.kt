@@ -1,15 +1,15 @@
 package me.victoralan.blockchain
 
 import me.victoralan.Hash
-import me.victoralan.blockchain.blockitems.RewardTransaction
-import me.victoralan.blockchain.blockitems.Transaction
+import me.victoralan.blockchain.transactions.CoinBaseTransaction
+import me.victoralan.blockchain.transactions.Transaction
 import me.victoralan.crypto.SHA3
 import java.io.Serializable
 
 class Block(val transactions: ArrayList<Transaction>, val time: Long, val index: Long) : Serializable {
     var hash: Hash
     var previousBlockHash: Hash = Hash("none")
-    var coinBaseTransaction: RewardTransaction? = null
+    var coinBaseTransaction: CoinBaseTransaction? = null
     var nonce: Long = 0
     init {
         hash = calculateHash()

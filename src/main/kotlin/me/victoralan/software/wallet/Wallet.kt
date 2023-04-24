@@ -7,8 +7,8 @@ import com.fasterxml.jackson.databind.*
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize
 import com.fasterxml.jackson.databind.annotation.JsonSerialize
 import com.fasterxml.jackson.databind.node.ObjectNode
-import me.victoralan.blockchain.blockitems.MoneyTransaction
-import me.victoralan.blockchain.blockitems.Transaction
+import me.victoralan.blockchain.transactions.MoneyTransaction
+import me.victoralan.blockchain.transactions.Transaction
 import me.victoralan.crypto.CryptoUtils
 import me.victoralan.crypto.ecdsa.ECDSA
 import me.victoralan.crypto.encoder.Base58
@@ -21,7 +21,6 @@ import java.io.Serializable
 import java.security.KeyFactory
 import java.security.KeyPair
 import java.security.MessageDigest
-import java.security.SecureRandom
 import java.security.interfaces.ECPrivateKey
 import java.security.interfaces.ECPublicKey
 import java.security.spec.PKCS8EncodedKeySpec
@@ -51,7 +50,7 @@ class Wallet(val keyPair: KeyPair = ECDSA().generateKeyPair(), password: String)
         val hash2 = sha3256.digest(hash1)
 
         // Step 3: Add version byte to the front of the result of Step 2
-        val versionByte = byteArrayOf((version-128).toByte(), SecureRandom(version.toBigInteger().toByteArray()).nextInt().toByte())
+        val versionByte = byteArrayOf((version-128).toByte(), version.toByte())
         val hash3 = ByteArray(versionByte.size + hash2.size)
         System.arraycopy(versionByte, 0, hash3, 0, versionByte.size)
         System.arraycopy(hash2, 0, hash3, versionByte.size, hash2.size)

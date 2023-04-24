@@ -1,4 +1,4 @@
-package me.victoralan.blockchain.blockitems
+package me.victoralan.blockchain.transactions
 
 import me.victoralan.Hash
 import me.victoralan.crypto.SHA3
@@ -18,6 +18,6 @@ class AddressTransaction(
     }
 
     override fun toString(): String {
-        return "Address(publicKey=${Base58.encode(publicKey.encoded)}, address=$address, time=$time)"
+        return "AddressTransaction(publicKey=${Base58.encode(publicKey.encoded)}, address=$address, time=$time)"
     }
 }

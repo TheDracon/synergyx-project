@@ -4,12 +4,12 @@ import com.fasterxml.jackson.annotation.JsonIgnore
 import com.fasterxml.jackson.annotation.JsonProperty
 import com.fasterxml.jackson.databind.ObjectMapper
 import me.victoralan.Hash
-import me.victoralan.blockchain.blockitems.MoneyTransaction
-import me.victoralan.blockchain.blockitems.RewardTransaction
-import me.victoralan.blockchain.blockitems.Transaction
+import me.victoralan.blockchain.transactions.CoinBaseTransaction
+import me.victoralan.blockchain.transactions.Transaction
 import me.victoralan.software.wallet.Address
+import java.io.Serializable
 
-class BlockChain(val difficulty: Int = 5, val reward: Float = 1f, val blockSize: Int = 10) {
+class BlockChain(val difficulty: Int = 5, val reward: Float = 1f, val blockSize: Int = 10) : Serializable {
 
     @JsonProperty
     var chain: ArrayList<Block> = ArrayList()
@@ -27,7 +27,7 @@ class BlockChain(val difficulty: Int = 5, val reward: Float = 1f, val blockSize:
                     .toCollection(ArrayList()) as ArrayList<Transaction>
 
                 val newBlock = Block(transactionSlice, System.nanoTime(), chain.size.toLong())
-                newBlock.coinBaseTransaction = RewardTransaction(miner, reward)
+                newBlock.coinBaseTransaction = CoinBaseTransaction(miner, reward)
                 val hashVal = getLastBlock().hash
                 newBlock.previousBlockHash = hashVal
                 if (newBlock.mine(difficulty)){

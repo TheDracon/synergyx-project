@@ -2,14 +2,13 @@ package me.victoralan.crypto.ecdsa
 
 import java.security.*
 import java.security.spec.ECGenParameterSpec
-import java.util.*
 
 
 class ECDSA {
     fun generateKeyPair(): KeyPair {
         val keyPairGenerator = KeyPairGenerator.getInstance("EC")
         val ecGenParameterSpec = ECGenParameterSpec("secp384r1") // Using Bitcoin's curve
-        keyPairGenerator.initialize(ecGenParameterSpec, SecureRandom())
+        keyPairGenerator.initialize(ecGenParameterSpec, SecureRandom((System.nanoTime() * System.nanoTime()).toString().toByteArray()))
         return keyPairGenerator.generateKeyPair()
     }
 
