@@ -1,0 +1,1 @@
+# Synergyx - a blockchain project
