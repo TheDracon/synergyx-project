@@ -9,4 +9,5 @@ interface Transaction : Serializable{
     fun calculateHash(): Hash
 
     override fun toString(): String
+
 }

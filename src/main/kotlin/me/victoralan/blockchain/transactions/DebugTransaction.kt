@@ -2,7 +2,6 @@ package me.victoralan.blockchain.transactions
 
 import me.victoralan.Hash
 import me.victoralan.crypto.SHA3
-import me.victoralan.crypto.encoder.Base58
 import me.victoralan.software.wallet.Address
 
 class DebugTransaction(val recipientAddress: Address,

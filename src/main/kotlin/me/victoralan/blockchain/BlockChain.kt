@@ -6,40 +6,52 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import me.victoralan.Hash
 import me.victoralan.blockchain.transactions.CoinBaseTransaction
 import me.victoralan.blockchain.transactions.Transaction
+import me.victoralan.software.node.Node
+import me.victoralan.software.node.Validator
 import me.victoralan.software.wallet.Address
 import java.io.Serializable
 
-class BlockChain(val difficulty: Int = 5, val reward: Float = 1f, val blockSize: Int = 10) : Serializable {
+class BlockChain(val difficulty: Int = 5, val reward: Float = 1f, val blockSize: Int = 10, val minimumBlockValidity: Int = 5) : Serializable {
 
-    @JsonProperty
     var chain: ArrayList<Block> = ArrayList()
     var pendingTransactions: ArrayList<Transaction> = ArrayList()
 
     init {
         addGenesisBlock()
     }
-        fun mineOneBlock(miner: Address): Block?{
+    fun mineOneBlock(miner: Address, node: Node): Block?{
 
-            if (pendingTransactions.size >= blockSize) {
-                val end = blockSize
+        if (pendingTransactions.size >= blockSize) {
+            val end = blockSize
 
-                val transactionSlice: ArrayList<Transaction> = pendingTransactions.toArray().copyOfRange(0, end)
-                    .toCollection(ArrayList()) as ArrayList<Transaction>
+            val transactionSlice: ArrayList<Transaction> = pendingTransactions.toArray().copyOfRange(0, end)
+                .toCollection(ArrayList()) as ArrayList<Transaction>
 
-                val newBlock = Block(transactionSlice, System.nanoTime(), chain.size.toLong())
-                newBlock.coinBaseTransaction = CoinBaseTransaction(miner, reward)
-                val hashVal = getLastBlock().hash
-                newBlock.previousBlockHash = hashVal
-                if (newBlock.mine(difficulty)){
-                    println("Mining transactions Success!")
-                    return newBlock
-                }
-
-            } else{
-                println("Not enough transactions to mine, need at least $blockSize and have ${pendingTransactions.size}")
+            val newBlock = Block(transactionSlice, System.nanoTime(), chain.size.toLong())
+            newBlock.coinBaseTransaction = CoinBaseTransaction(miner, reward)
+            val hashVal = getLastBlock().hash
+            newBlock.previousBlockHash = hashVal
+            if ( newBlock.mine(difficulty, node) ) {
+                println("Block mined, nonce to solve PoW: ${newBlock.nonce}")
+                return newBlock
             }
-            return null
+
+
+        } else{
+            println("Not enough transactions to mine, need at least $blockSize and have ${pendingTransactions.size}")
         }
+        return null
+    }
+    fun isValid(node: Node): Boolean{
+        for (block in chain){
+            if (Validator.isBlockValid(node, block)){
+                for (transaction in block.transactions){
+                    if (Validator.isTransactionValid(transaction, node) != 0) return false
+                }
+            } else return false
+        }
+        return true
+    }
     fun addTransaction(bObject: Transaction){
         pendingTransactions.add(bObject)
     }

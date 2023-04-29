@@ -1,18 +1,15 @@
 package me.victoralan
 
 import me.victoralan.blockchain.Block
-import me.victoralan.blockchain.transactions.MoneyTransaction
-import me.victoralan.blockchain.transactions.CoinBaseTransaction
 import me.victoralan.blockchain.transactions.DebugTransaction
+import me.victoralan.blockchain.transactions.MoneyTransaction
 import me.victoralan.blockchain.transactions.Transaction
 import me.victoralan.crypto.ecdsa.ECDSA
-import me.victoralan.crypto.encoder.Base58.encode
 import me.victoralan.software.node.Node
 import me.victoralan.software.wallet.Wallet
 
 
 fun main() {
-
     val node = Node("thedracon")
     val wallet = Wallet(ECDSA().generateKeyPair(), "password1")
     val wallet2 = Wallet(ECDSA().generateKeyPair(), "password2")
@@ -28,12 +25,6 @@ fun main() {
     val block = Block(transactions, System.nanoTime(), 0)
 
     node.onNewBlock(block)
-
-    /**
-     * w1 => -10 +1 => 300-9
-     * w2 => +10 -5 +1 => 300+6
-     * w3 => +5 -1 -1 => 300+3
-     */
 
     var transaction = MoneyTransaction(wallet.addresses[0], wallet2.addresses[0].address, 10f, System.nanoTime())
     transaction = wallet.sign(transaction)
@@ -57,7 +48,7 @@ fun main() {
     transaction7 = wallet3.sign(transaction7)
 
 
-    node.startMineLoop()
+    node.mineAvailable(node.miningWallet.addresses[0])
     node.onNewTransaction(transaction)
     node.onNewTransaction(transaction2)
     node.onNewTransaction(transaction3)

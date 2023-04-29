@@ -8,11 +8,14 @@ import java.security.PublicKey
 
 class AddressTransaction(
     val publicKey: PublicKey,
-    var address: String,
+    var address: Address,
     override var time: Long = System.nanoTime()) : Transaction {
-    constructor(address: Address) : this(address.publicKey, address.address)
+    constructor(address: Address) : this(address.publicKey, address)
 
     override lateinit var hash: Hash
+    init {
+        hash = calculateHash()
+    }
     override fun calculateHash(): Hash {
         return Hash(SHA3.hashString("$publicKey $address $time"))
     }

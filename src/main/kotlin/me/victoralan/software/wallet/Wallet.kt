@@ -7,17 +7,20 @@ import com.fasterxml.jackson.databind.*
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize
 import com.fasterxml.jackson.databind.annotation.JsonSerialize
 import com.fasterxml.jackson.databind.node.ObjectNode
+import me.victoralan.blockchain.transactions.AddressTransaction
 import me.victoralan.blockchain.transactions.MoneyTransaction
 import me.victoralan.blockchain.transactions.Transaction
 import me.victoralan.crypto.CryptoUtils
 import me.victoralan.crypto.ecdsa.ECDSA
 import me.victoralan.crypto.encoder.Base58
 import me.victoralan.software.node.Node
+import me.victoralan.software.wallet.networking.WalletClient
 import net.glxn.qrgen.core.image.ImageType
 import net.glxn.qrgen.javase.QRCode
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.Serializable
+import java.net.InetAddress
 import java.security.KeyFactory
 import java.security.KeyPair
 import java.security.MessageDigest
@@ -31,6 +34,7 @@ import java.security.spec.X509EncodedKeySpec
 @JsonDeserialize(using = WalletDeserializer::class)
 class Wallet(val keyPair: KeyPair = ECDSA().generateKeyPair(), password: String) : Serializable {
     val transactions: ArrayList<MoneyTransaction> = ArrayList()
+    var walletClient: WalletClient = WalletClient()
     var aesEncryptionKey = CryptoUtils().getKeyFromPassword(password)
     var currentValance: Float = 0f
     var userSettings: UserSettings = UserSettings()
@@ -74,21 +78,19 @@ class Wallet(val keyPair: KeyPair = ECDSA().generateKeyPair(), password: String)
     init {
         createAddress(0)
     }
-
-    fun sendMoney(recipeintAddress: String, senderAddress: Address, ammount: Float){
-        val newTransaction = MoneyTransaction(senderAddress, recipeintAddress, ammount, System.nanoTime())
-        newTransaction.sign(privateKey = keyPair.private)
-        pendingTransaction.add(newTransaction)
-
-        // TODO("SEND TRANSACTION TO NODE")
+    fun connectToNode(nodeAddres: InetAddress, port: Int){
+        walletClient.connectToNode(nodeAddres, port)
+    }
+    fun sendMoney(recipientAddress: String, senderAddress: Address, amount: Float){
+        sendMoney(MoneyTransaction(senderAddress, recipientAddress, amount, System.nanoTime()))
     }
     fun sendMoney(transaction: MoneyTransaction){
 
         transaction.sign(privateKey = keyPair.private)
 
         pendingTransaction.add(transaction)
-
-        // TODO("SEND TRANSACTION TO NODE")
+        walletClient.sendTransaction(transaction)
+        // TODO("CHECK IF TRANSACTION SENDING WORKS")
     }
     fun sign(transaction: MoneyTransaction): MoneyTransaction{
 
@@ -101,21 +103,19 @@ class Wallet(val keyPair: KeyPair = ECDSA().generateKeyPair(), password: String)
     fun saveWallet() {
         val objectMapper = ObjectMapper()
         objectMapper.enable(SerializationFeature.INDENT_OUTPUT)
-        println("1: " + Base58.encode(aesEncryptionKey.encoded)) //
 
         val data = CryptoUtils().encryptAES(objectMapper.writeValueAsString(this), aesEncryptionKey)
         saveFile.writeText(data)
     }
-    fun checkBalance(address: Address): Double{
-        TODO("QUERY TO THE NODE")
+    fun checkBalance(address: String): Float{
+        return walletClient.checkBalance(address)
     }
     fun createAddress(version: Int = 0){
-        val addr = generateAddress(version)
-        val addressTransaction = Address(keyPair.public, addr)
-        addresses.add(addressTransaction)
-
-        // TODO("SEND CREATION EVENT TO NODE")
-
+        val addressString = generateAddress(version)
+        val address = Address(keyPair.public, addressString)
+        addresses.add(address)
+        val addressTransaction = AddressTransaction(address)
+        walletClient.sendTransaction(addressTransaction)
     }
 
     fun generateQRCodes(){

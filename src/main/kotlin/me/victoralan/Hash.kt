@@ -7,11 +7,12 @@ import com.fasterxml.jackson.databind.annotation.JsonSerialize
 import me.victoralan.crypto.SHA3
 import java.io.Serializable
 import java.math.BigInteger
+import java.security.SecureRandom
 
 @JsonSerialize(using = HashSerializer::class)
 class Hash : Serializable{
 
-    val value: ByteArray
+    var value: ByteArray
 
     constructor(hashValue: ByteArray) {
         value = hashValue
@@ -20,7 +21,9 @@ class Hash : Serializable{
         value = hashValue.toByteArray()
     }
 
-
+    fun shuffle(){
+        this.value = random().value
+    }
     fun binaryString(): String{
         return value.joinToString("") { byte ->
             String.format("%8s", byte.toInt().and(0xFF).toString(2)).replace(' ', '0')
@@ -41,6 +44,14 @@ class Hash : Serializable{
          */
         fun fromString(string: String): Hash{
             return Hash(SHA3.hashString(string))
+        }
+
+        /**
+         * Returns a semi-random Hash
+         * @return The new Hash object
+         */
+        fun random(): Hash{
+            return fromString(SecureRandom().nextLong().toString())
         }
         fun empty() : Hash{
             return Hash("")
