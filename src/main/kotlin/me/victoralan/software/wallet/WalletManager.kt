@@ -10,10 +10,8 @@ class WalletManager {
     fun loadWallet(file: File, passphrase: String) : Wallet{
         val mapper = ObjectMapper()
         val key = CryptoUtils().getKeyFromPassword(passphrase)
-        println("4: " + Base58.encode(key.encoded)) //
 
         val decryptedData = CryptoUtils().decryptAES(file.readText(), key)
-        println(decryptedData)
         return mapper.readValue(decryptedData, Wallet::class.java)
     }
 

@@ -1,6 +1,6 @@
 package me.victoralan.blockchain.transactions
 
-import me.victoralan.Hash
+import me.victoralan.blockchain.Hash
 import me.victoralan.software.wallet.Address
 import java.io.Serializable
 

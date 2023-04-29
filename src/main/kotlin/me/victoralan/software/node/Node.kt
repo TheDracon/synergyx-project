@@ -1,6 +1,6 @@
 package me.victoralan.software.node
 
-import me.victoralan.Hash
+import me.victoralan.blockchain.Hash
 import me.victoralan.blockchain.Block
 import me.victoralan.blockchain.BlockChain
 import me.victoralan.blockchain.transactions.*
@@ -8,21 +8,21 @@ import me.victoralan.crypto.encoder.ObjectEncoder
 import me.victoralan.software.node.networking.NodeServer
 import me.victoralan.software.wallet.Address
 import me.victoralan.software.wallet.Wallet
+import me.victoralan.utils.Validator
 import java.io.File
-import java.net.InetAddress
 import java.net.InetSocketAddress
 import java.security.PublicKey
 
-class Node(walletPassword: String) {
+class Node(walletPassword: String, host: InetSocketAddress = InetSocketAddress("localhost", 19101)) {
     var currentBlockMiningHash: Hash = Hash.empty()
-    var blockChain: BlockChain = BlockChain(difficulty = 20, blockSize = 2)
+    var blockChain: BlockChain = BlockChain(difficulty = 5, blockSize = 4, minimumBlockValidity = 0)
     var miningWallet: Wallet
     private var addressCache: ArrayList<Address> = ArrayList()
-    private val nodeServer: NodeServer = NodeServer(InetAddress.getLocalHost(), 8081, this)
+    val nodeServer: NodeServer = NodeServer(host, this)
     private var miningAll: Boolean = false
     var neighbours: ArrayList<InetSocketAddress> = ArrayList()
     init {
-        miningWallet = Wallet(password = walletPassword)
+        miningWallet = Wallet(password = walletPassword, _nodeAddress = host)
     }
 
     /**
@@ -36,9 +36,11 @@ class Node(walletPassword: String) {
             val response = nodeServer.getBlockChainOf(node, maxLength) ?: continue
             val length = response.first
             val blockChain = ObjectEncoder().decode<BlockChain>(response.second)
-            if (length > maxLength && blockChain.isValid(this)){
-                maxLength = length
-                newChain = blockChain
+            if (length > maxLength) {
+                if (blockChain.isValid()) {
+                    maxLength = length
+                    newChain = blockChain
+                }
             }
         }
         if (newChain != null){
@@ -53,12 +55,11 @@ class Node(walletPassword: String) {
      * @return An integer with the validity transaction: If 0 then the transaction is valid, if 1 then there is no senderAddress, if 2 then sender has not enough money to send transaction, if 3 then transaction is not or incorrectly singed
      */
     fun onNewTransaction(transaction: Transaction): Int {
-        // If transaction already in pendingTransactions then we can skip
-        if (blockChain.pendingTransactions.any {pendingTrans -> pendingTrans.hash == transaction.hash}) return 0
-        // If transaction already in blockChain then we can skip
 
+        // If transaction already in pendingTransactions then we can skip
+        if (blockChain.pendingTransactions.any {pendingTrans -> pendingTrans.hash.toString() == transaction.hash.toString()}) return 0
+        // If transaction already in blockChain then we can skip
         if (blockChain.chain.any { block -> block.transactions.any { transactionInBlock -> transactionInBlock.hash == transaction.hash } }) return 0
-        println("GOT NEW TRANSACTION: $transaction")
         val validity = Validator.isTransactionValid(transaction, this)
         if(validity == 0) {
             blockChain.pendingTransactions.add(transaction)
@@ -70,32 +71,28 @@ class Node(walletPassword: String) {
     }
     fun onNewBlock(block: Block): Boolean {
         // If block already in blockchain then we can skip this
-        if (blockChain.chain.any { block2 -> block2.hash == block.hash }) return true
-
-        if (Validator.isBlockValid(this, block)){
+        if (blockChain.chain.any { block2 -> block2.hash.toString() == block.hash.toString() }) {
+            return false
+        }
+        if (Validator.isBlockValid(this, block, false)){
             // ADD THE BLOCK
             blockChain.addBlock(block)
+
             nodeServer.broadcastNewBlock(neighbours, block)
             //TODO("CHECK THAT BROADCASTING WORKS")
-            println(block.transactions.size)
-            for (transaction in block.transactions){
-                if (transaction is AddressTransaction){
-                    addressCache.add(transaction.address)
-                }
-                for (pendingTransaction in blockChain.pendingTransactions.clone() as ArrayList<Transaction>){
-                    if (transaction.hash == pendingTransaction.hash){
-                        //REMOVE FROM PENDING TRANSACTIONS
-                        if (blockChain.pendingTransactions.contains(pendingTransaction)){
-                            blockChain.pendingTransactions.remove(pendingTransaction)
-                        }
-
-                    }
+            block.transactions.forEach {transaction ->
+                blockChain.pendingTransactions.removeAll {
+                    pendingTransaction -> transaction.hash.toString() == pendingTransaction.hash.toString() && blockChain.pendingTransactions.any {it.hash.toString() == pendingTransaction.hash.toString()}
                 }
             }
+            return true
         }
-        return true
+        return false
     }
-
+    fun start(){
+        this.nodeServer.startServer()
+        miningWallet.createAddress(0)
+    }
 
     fun saveBlockChain(file: File){
         file.createNewFile()
@@ -125,26 +122,25 @@ class Node(walletPassword: String) {
         var balance = 0f
         for (block in blockChain.chain){
             // IF BLOCK HAS NOT ENOUGH BLOCKS IN FRONT IT DOESN'T COUNT FOR BALANCE
-            if (!Validator.isBlockFullyValid(this, block)) continue
+            if ((block.index - blockChain.chain.size) == blockChain.minimumBlockValidity) {
+                continue
+            }
             for (transaction in block.transactions + block.coinBaseTransaction){
                 if (transaction is CoinBaseTransaction){
                     if (transaction.recipientAddress.address == address){
-                        if (debug) println("BALANCE CHECK: address $address got +${transaction.amount} SRX FROM COINBASETRANSACTION")
                         balance+=transaction.amount
                     }
                 }
                 if (transaction is MoneyTransaction){
                     if (transaction.recipientAddress == address){
-                        if (debug) println("BALANCE CHECK: address $address got +${transaction.amount} SRX FROM RECEIVING MONEY FROM ${transaction.senderAddress?.address}")
                         balance+=transaction.amount
                     } else if (transaction.senderAddress!= null && transaction.senderAddress.address == address){
-                        if (debug) println("BALANCE CHECK: address $address got -${transaction.amount} SRX FROM SENDING MONEY TO ${transaction.senderAddress.address}")
                         balance-=transaction.amount
                     }
                 }
                 if (transaction is DebugTransaction){
+                    if (!debug) continue
                     if (transaction.recipientAddress.address == address){
-                        if (debug) println("BALANCE CHECK: address $address got +${transaction.amount} SRX FROM DEBUG TRANSACTION")
                         balance+=transaction.amount
                     }
                 }
@@ -157,7 +153,7 @@ class Node(walletPassword: String) {
             for (transaction in block.transactions){
                 if (transaction is AddressTransaction){
                     if (transaction.address.address == address){
-                        return transaction.publicKey
+                        return transaction.address.publicKey
                     }
                 }
             }
@@ -170,12 +166,44 @@ class Node(walletPassword: String) {
             while (miningAll){
                 val newBlock = blockChain.mineOneBlock(miningAddress, this)
                 if (newBlock != null) onNewBlock(newBlock)
-
             }
         }.start()
     }
     fun stopMining(){
         this.miningAll = false
         this.currentBlockMiningHash = Hash.empty()
+    }
+
+    companion object{
+        fun getBalanceOfAddress(address: String, blockChain: BlockChain, debug: Boolean = false): Float {
+            var balance = 0f
+            for (block in blockChain.chain) {
+                // IF BLOCK HAS NOT ENOUGH BLOCKS IN FRONT IT DOESN'T COUNT FOR BALANCE
+                if ((block.index - blockChain.chain.size) == blockChain.minimumBlockValidity) {
+                    continue
+                }
+                for (transaction in block.transactions + block.coinBaseTransaction) {
+                    if (transaction is CoinBaseTransaction) {
+                        if (transaction.recipientAddress.address == address) {
+                            balance += transaction.amount
+                        }
+                    }
+                    if (transaction is MoneyTransaction) {
+                        if (transaction.recipientAddress == address) {
+                            balance += transaction.amount
+                        } else if (transaction.senderAddress != null && transaction.senderAddress.address == address) {
+                            balance -= transaction.amount
+                        }
+                    }
+                    if (transaction is DebugTransaction) {
+                        if (!debug) continue
+                        if (transaction.recipientAddress.address == address) {
+                            balance += transaction.amount
+                        }
+                    }
+                }
+            }
+            return balance
+        }
     }
 }

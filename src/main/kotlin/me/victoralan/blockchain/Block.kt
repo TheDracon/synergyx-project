@@ -1,6 +1,6 @@
 package me.victoralan.blockchain
 
-import me.victoralan.Hash
+import com.fasterxml.jackson.annotation.JsonIgnore
 import me.victoralan.blockchain.transactions.CoinBaseTransaction
 import me.victoralan.blockchain.transactions.Transaction
 import me.victoralan.crypto.SHA3
@@ -8,24 +8,27 @@ import me.victoralan.software.node.Node
 import java.io.Serializable
 import java.security.SecureRandom
 
-class Block(val transactions: ArrayList<Transaction>, val time: Long, val index: Long) : Serializable {
+class Block(val transactions: ArrayList<Transaction>, val time: Long, val index: Int) : Serializable {
     var hash: Hash
     var previousBlockHash: Hash = Hash("none")
     var coinBaseTransaction: CoinBaseTransaction? = null
     var nonce: Long = SecureRandom().nextLong()
+
     init {
         hash = calculateHash()
     }
 
-    fun mine(difficulty: Int, node: Node): Boolean{
-        while (hash.binaryString().startsWith("0".repeat(difficulty)) && node.currentBlockMiningHash.value.contentEquals(this.hash.value)){
+    fun mine(difficulty: Int): Boolean{
+        while (!hash.binaryString().startsWith("0".repeat(difficulty))) {
             nonce++
-            hash = calculateHash()
+            this.hash = calculateHash()
         }
-        return node.currentBlockMiningHash.value.contentEquals(this.hash.value)
+        return true
     }
-
-
+    @JsonIgnore
+    fun isGenesis(): Boolean{
+        return (transactions.isEmpty() && coinBaseTransaction == null && index == 0)
+    }
     fun calculateHash(): Hash {
         var transactionsString = ""
         for (transaction in transactions){

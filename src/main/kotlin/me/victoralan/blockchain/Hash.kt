@@ -1,4 +1,4 @@
-package me.victoralan
+package me.victoralan.blockchain
 
 import com.fasterxml.jackson.core.JsonGenerator
 import com.fasterxml.jackson.databind.JsonSerializer
@@ -42,7 +42,7 @@ class Hash : Serializable{
          * @param string The string to hash
          * @return The new Hash object
          */
-        fun fromString(string: String): Hash{
+        fun fromString(string: String): Hash {
             return Hash(SHA3.hashString(string))
         }
 
@@ -50,10 +50,10 @@ class Hash : Serializable{
          * Returns a semi-random Hash
          * @return The new Hash object
          */
-        fun random(): Hash{
+        fun random(): Hash {
             return fromString(SecureRandom().nextLong().toString())
         }
-        fun empty() : Hash{
+        fun empty() : Hash {
             return Hash("")
         }
         fun getBinaryString(value: ByteArray): String{

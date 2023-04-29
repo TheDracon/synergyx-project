@@ -17,10 +17,12 @@ import me.victoralan.software.node.Node
 import me.victoralan.software.wallet.networking.WalletClient
 import net.glxn.qrgen.core.image.ImageType
 import net.glxn.qrgen.javase.QRCode
+import org.apache.xpath.operations.Bool
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.Serializable
 import java.net.InetAddress
+import java.net.InetSocketAddress
 import java.security.KeyFactory
 import java.security.KeyPair
 import java.security.MessageDigest
@@ -32,15 +34,23 @@ import java.security.spec.X509EncodedKeySpec
 
 @JsonSerialize(using = WalletSerializer::class)
 @JsonDeserialize(using = WalletDeserializer::class)
-class Wallet(val keyPair: KeyPair = ECDSA().generateKeyPair(), password: String) : Serializable {
+class Wallet(val keyPair: KeyPair = ECDSA().generateKeyPair(),
+             password: String,
+             private var _nodeAddress: InetSocketAddress) : Serializable {
+    var nodeAddress: InetSocketAddress = _nodeAddress
+        set(value) {
+            this.walletClient.nodeAddress = value
+            field = value
+        }
+
     val transactions: ArrayList<MoneyTransaction> = ArrayList()
-    var walletClient: WalletClient = WalletClient()
+    private var walletClient: WalletClient = WalletClient(_nodeAddress)
     var aesEncryptionKey = CryptoUtils().getKeyFromPassword(password)
     var currentValance: Float = 0f
     var userSettings: UserSettings = UserSettings()
     var trustedNodes: ArrayList<Node> = ArrayList()
     var pendingTransaction: ArrayList<Transaction> = ArrayList()
-    var qrCodes: ArrayList<QRCode> = ArrayList()
+    private var qrCodes: ArrayList<QRCode> = ArrayList()
     var addresses: ArrayList<Address> = ArrayList()
     // TODO("ADDRESS BOOK")
     val saveFile: File = File("./wallet.synergyx")
@@ -75,21 +85,18 @@ class Wallet(val keyPair: KeyPair = ECDSA().generateKeyPair(), password: String)
         // Step 7: Encode the result of Step 6 using Base58Check encoding
         return Base58.encode(hash6)
     }
-    init {
-        createAddress(0)
+    fun setAddress(newNodeAddress: InetSocketAddress){
+        nodeAddress = newNodeAddress
     }
-    fun connectToNode(nodeAddres: InetAddress, port: Int){
-        walletClient.connectToNode(nodeAddres, port)
+    fun sendMoney(recipientAddress: String, senderAddress: Address, amount: Float): Boolean{
+        return sendMoney(MoneyTransaction(senderAddress, recipientAddress, amount, System.nanoTime()))
     }
-    fun sendMoney(recipientAddress: String, senderAddress: Address, amount: Float){
-        sendMoney(MoneyTransaction(senderAddress, recipientAddress, amount, System.nanoTime()))
-    }
-    fun sendMoney(transaction: MoneyTransaction){
+    fun sendMoney(transaction: MoneyTransaction): Boolean{
 
         transaction.sign(privateKey = keyPair.private)
 
         pendingTransaction.add(transaction)
-        walletClient.sendTransaction(transaction)
+        return walletClient.sendTransaction(transaction)
         // TODO("CHECK IF TRANSACTION SENDING WORKS")
     }
     fun sign(transaction: MoneyTransaction): MoneyTransaction{
@@ -110,12 +117,12 @@ class Wallet(val keyPair: KeyPair = ECDSA().generateKeyPair(), password: String)
     fun checkBalance(address: String): Float{
         return walletClient.checkBalance(address)
     }
-    fun createAddress(version: Int = 0){
+    fun createAddress(version: Int = 0): Boolean{
         val addressString = generateAddress(version)
         val address = Address(keyPair.public, addressString)
         addresses.add(address)
         val addressTransaction = AddressTransaction(address)
-        walletClient.sendTransaction(addressTransaction)
+        return walletClient.sendTransaction(addressTransaction)
     }
 
     fun generateQRCodes(){
@@ -151,6 +158,9 @@ class WalletSerializer : JsonSerializer<Wallet>() {
         gen.writeObjectField("pendingTransaction", value.pendingTransaction)
         gen.writeObjectField("addresses", value.addresses)
         gen.writeObjectField("transactions", value.transactions)
+        gen.writeObjectField("nodeAddressHost", value.nodeAddress.address.hostAddress)
+        gen.writeObjectField("nodeAddressPort", value.nodeAddress.port)
+
         gen.writeEndObject()
     }
 }
@@ -174,9 +184,9 @@ class WalletDeserializer : JsonDeserializer<Wallet>() {
         val publicKey: ECPublicKey = keyFactory.generatePublic(publicKeySpec) as ECPublicKey
         val privateKey: ECPrivateKey = keyFactory.generatePrivate(privateKeySpec) as ECPrivateKey
         val keyPair = KeyPair(publicKey, privateKey)
-
-
-        val wallet = Wallet(keyPair, "password")
+        val nodeAddressHost = node.get("nodeAddressHost").asText()
+        val nodeAddressPort = node.get("nodeAddressPort").asInt()
+        val wallet = Wallet(keyPair, "password", InetSocketAddress(nodeAddressHost, nodeAddressPort))
 
         wallet.transactions.addAll(node.get("transactions").map { transactionNode -> codec.treeToValue(transactionNode, MoneyTransaction::class.java) })
         wallet.currentValance = currentValance

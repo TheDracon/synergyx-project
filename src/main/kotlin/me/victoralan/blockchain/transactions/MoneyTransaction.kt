@@ -1,6 +1,6 @@
 package me.victoralan.blockchain.transactions
 
-import me.victoralan.Hash
+import me.victoralan.blockchain.Hash
 import me.victoralan.crypto.SHA3
 import me.victoralan.crypto.ecdsa.ECDSA
 import me.victoralan.crypto.encoder.Base58
@@ -31,7 +31,6 @@ class MoneyTransaction(val senderAddress: Address?,
         if (amount <= 0f) return false
 
         if (ECDSA().verifySignature(hash.value, signature!!, publicKey)){
-            println("TRANSACTION VERIFIED: $this")
 
             return true
         }
