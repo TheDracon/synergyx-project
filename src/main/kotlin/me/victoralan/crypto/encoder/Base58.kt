@@ -21,9 +21,9 @@ object Base58 {
     }
 
     /** Encodes the given bytes in base58. No checksum is appended.  */
-    fun encode(input: ByteArray): String {
-        var input = input
-        if (input.size == 0) {
+    fun encode(inp: ByteArray): String {
+        var input = inp
+        if (input.isEmpty()) {
             return ""
         }
         input = copyOfRange(input, 0, input.size)

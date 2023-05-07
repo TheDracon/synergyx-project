@@ -12,6 +12,7 @@ import com.fasterxml.jackson.databind.annotation.JsonSerialize
 import com.fasterxml.jackson.databind.node.ObjectNode
 import me.victoralan.crypto.encoder.Base58
 import java.io.Serializable
+import java.lang.RuntimeException
 import java.security.KeyFactory
 import java.security.MessageDigest
 import java.security.PublicKey
@@ -22,11 +23,29 @@ import java.security.spec.X509EncodedKeySpec
 @JsonDeserialize(using = AddressDeserializer::class)
 class Address(val publicKey: PublicKey,
               var address: String) : Serializable{
+
     constructor(publicKey: PublicKey, version: Int) : this(publicKey, "") {
-        address = generateAddress(version, publicKey)
+        address = generateAddress(version.toShort(), publicKey)
+        println(address)
+        checkCoherence()
     }
 
-    private fun generateAddress(version: Int, publicKey: PublicKey): String {
+    init {
+        if (address != ""){
+            checkCoherence()
+        }
+    }
+
+    fun checkCoherence(){
+        for (i in -128..128){
+            println("$i: ${generateAddress(i.toShort(), publicKey)}")
+            if (generateAddress(i.toShort(), publicKey) == address){
+                return
+            }
+        }
+        throw RuntimeException("Address not coherent")
+    }
+    private fun generateAddress(version: Short, publicKey: PublicKey): String {
         // Step 1: Perform SHA-256 hash on the public key
         val sha256 = MessageDigest.getInstance("SHA-256")
         val hash1 = sha256.digest(publicKey.encoded)

@@ -5,9 +5,9 @@ import me.victoralan.crypto.SHA3
 import me.victoralan.crypto.encoder.Base58
 import me.victoralan.software.wallet.Address
 
-class AddressTransaction(
+class AddressBlockItem(
     var address: Address,
-    override var time: Long = System.nanoTime()) : Transaction {
+    override var time: Long = System.nanoTime()) : BlockItem {
 
     override lateinit var hash: Hash
     init {
@@ -18,6 +18,6 @@ class AddressTransaction(
     }
 
     override fun toString(): String {
-        return "AddressTransaction(publicKey=${Base58.encode(address.publicKey.encoded)}, address=${address.address}, time=$time)"
+        return "AddressBlockItem(publicKey=${Base58.encode(address.publicKey.encoded)}, address=${address.address}, time=$time)"
     }
 }

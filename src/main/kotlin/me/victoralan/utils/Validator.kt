@@ -2,10 +2,9 @@ package me.victoralan.utils
 
 import me.victoralan.blockchain.Block
 import me.victoralan.blockchain.BlockChain
-import me.victoralan.blockchain.transactions.CoinBaseTransaction
-import me.victoralan.blockchain.transactions.DebugTransaction
-import me.victoralan.blockchain.transactions.MoneyTransaction
+import me.victoralan.blockchain.transactions.DebugBlockItem
 import me.victoralan.blockchain.transactions.Transaction
+import me.victoralan.blockchain.transactions.BlockItem
 import me.victoralan.software.node.Node
 import java.security.PublicKey
 
@@ -29,11 +28,11 @@ class Validator {
 
             if (block.isGenesis()) return true
             val previousBlock = blockChain.chain[block.index - 1]
-            if (block.transactions.filterIsInstance<DebugTransaction>().isNotEmpty()) {
+            if (block.blockItems.filterIsInstance<DebugBlockItem>().isNotEmpty()) {
                 return true
             }
             //CHECK IF BLOCK IS FULL
-            if (block.transactions.size == blockChain.blockSize) {
+            if (block.blockItems.size == blockChain.blockSize) {
 
                 //CHECK IF CALCULATION OF HASH IS THE SAME AS THE HASH
                 if (block.hash.value.contentEquals(block.calculateHash().value)) {
@@ -45,9 +44,9 @@ class Validator {
                         if (isInBlockChain) if (!block.previousBlockHash.value.contentEquals(previousBlock.hash.value)) return false
                         if (block.coinBaseTransaction == null) return false
                         if (block.coinBaseTransaction!!.amount != blockChain.reward) return false
-                        //CHECK IF TRANSACTIONS OF BLOCK ARE VALID
-                        for (transaction in block.transactions) {
-                            if (isTransactionValid(transaction, blockChain) != 0) {
+                        //CHECK IF BLOCKITEMS OF BLOCK ARE VALID
+                        for (blockItem in block.blockItems) {
+                            if (isBlockItemValid(blockItem, blockChain) != 0) {
                                 return false
                             }
                         }
@@ -77,25 +76,25 @@ class Validator {
 
         /**
          * Check if a transaction is valid
-         * @param transaction The transaction to check
+         * @param blockItem The transaction to check
          * @return An integer with the validity transaction: If 0 then the transaction is valid, if 1 then there is no senderAddress, if 2 then sender has not enough money to send transaction, if 3 then transaction is not or incorrectly singed
          */
 
-        fun isTransactionValid(transaction: Transaction, blockChain: BlockChain): Int {
-            if (transaction is MoneyTransaction) {
-                if (transaction.senderAddress != null) {
+        fun isBlockItemValid(blockItem: BlockItem, blockChain: BlockChain): Int {
+            if (blockItem is Transaction) {
+                if (blockItem.senderAddress != null) {
                     // CHECK IF SENDER HAS ENOUGH BALANCE
-                    val balanceOfSender = Node.getBalanceOfAddress(transaction.senderAddress.address, blockChain, true) //TODO("NOT DEBUG MODE")
-                    if (balanceOfSender >= transaction.amount) {
-                        val publicKey: PublicKey = transaction.senderAddress.publicKey
-                        return if (transaction.verify(publicKey)) 0 else 3
+                    val balanceOfSender = Node.getBalanceOfAddress(blockItem.senderAddress.address, blockChain, true) //TODO("NOT DEBUG MODE")
+                    if (balanceOfSender >= blockItem.amount) {
+                        val publicKey: PublicKey = blockItem.senderAddress.publicKey
+                        return if (blockItem.verify(publicKey)) 0 else 3
                     } else return 2
                 } else return 1
             } else return 0
         }
 
-        fun isTransactionValid(transaction: Transaction, node: Node): Int {
-            return isTransactionValid(transaction, node.blockChain)
+        fun isBlockItemValid(blockItem: BlockItem, node: Node): Int {
+            return isBlockItemValid(blockItem, node.blockChain)
         }
     }
 }

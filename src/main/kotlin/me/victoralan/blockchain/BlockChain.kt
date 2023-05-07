@@ -3,7 +3,7 @@ package me.victoralan.blockchain
 import com.fasterxml.jackson.annotation.JsonIgnore
 import com.fasterxml.jackson.databind.ObjectMapper
 import me.victoralan.blockchain.transactions.CoinBaseTransaction
-import me.victoralan.blockchain.transactions.Transaction
+import me.victoralan.blockchain.transactions.BlockItem
 import me.victoralan.software.node.Node
 import me.victoralan.utils.Validator
 import me.victoralan.software.wallet.Address
@@ -12,20 +12,20 @@ import java.io.Serializable
 class BlockChain(val difficulty: Int = 5, val reward: Float = 1f, val blockSize: Int = 10, val minimumBlockValidity: Int = 5) : Serializable {
 
     var chain: ArrayList<Block> = ArrayList()
-    var pendingTransactions: ArrayList<Transaction> = ArrayList()
+    var pendingBlockItems: ArrayList<BlockItem> = ArrayList()
 
     init {
         addGenesisBlock()
     }
     fun mineOneBlock(miner: Address, node: Node): Block?{
 
-        if (pendingTransactions.size >= blockSize) {
+        if (pendingBlockItems.size >= blockSize) {
 
             val end = blockSize
-            val transactionSlice: ArrayList<Transaction> = pendingTransactions.toArray().copyOfRange(0, end)
-                .toCollection(ArrayList()) as ArrayList<Transaction>
+            val blockItemSlices: ArrayList<BlockItem> = pendingBlockItems.toArray().copyOfRange(0, end)
+                .toCollection(ArrayList()) as ArrayList<BlockItem>
 
-            val newBlock = Block(transactionSlice, System.nanoTime(), chain.size)
+            val newBlock = Block(blockItemSlices, System.nanoTime(), chain.size)
             newBlock.coinBaseTransaction = CoinBaseTransaction(miner, reward)
 
             val hashVal = getLastBlock().hash
@@ -41,8 +41,8 @@ class BlockChain(val difficulty: Int = 5, val reward: Float = 1f, val blockSize:
     fun isValid(): Boolean {
         for (block in chain){
             if (Validator.isBlockValid(this, block)){
-                for (transaction in block.transactions){
-                    val validity = Validator.isTransactionValid(transaction, this)
+                for (blockItem in block.blockItems){
+                    val validity = Validator.isBlockItemValid(blockItem, this)
                     if (validity != 0) {
                         return false
                     }
@@ -53,8 +53,8 @@ class BlockChain(val difficulty: Int = 5, val reward: Float = 1f, val blockSize:
         }
         return true
     }
-    fun addTransaction(bObject: Transaction){
-        pendingTransactions.add(bObject)
+    fun addBlockItem(bObject: BlockItem){
+        pendingBlockItems.add(bObject)
     }
     /**
      * Adds a block to the chain, if the is no previous block then the hash will be an empty string.
@@ -76,8 +76,8 @@ class BlockChain(val difficulty: Int = 5, val reward: Float = 1f, val blockSize:
      * Adds the first block that is just empty
      */
     private fun addGenesisBlock(){
-        val transactions = ArrayList<Transaction>()
-        val genesisBlock = Block(transactions, System.nanoTime(), 0)
+        val blockItems = ArrayList<BlockItem>()
+        val genesisBlock = Block(blockItems, System.nanoTime(), 0)
         genesisBlock.previousBlockHash = Hash.empty()
         chain.add(genesisBlock)
     }

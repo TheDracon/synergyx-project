@@ -51,19 +51,19 @@ class Node(walletPassword: String, host: InetSocketAddress = InetSocketAddress("
     }
 
     /**
-     * @param transaction The transaction to check
-     * @return An integer with the validity transaction: If 0 then the transaction is valid, if 1 then there is no senderAddress, if 2 then sender has not enough money to send transaction, if 3 then transaction is not or incorrectly singed
+     * @param blockItem The blockItem to check
+     * @return An integer with the validity blockItem: If 0 then the blockItem is valid, if 1 then there is no senderAddress, if 2 then sender has not enough money to send blockItem, if 3 then blockItem is not or incorrectly singed
      */
-    fun onNewTransaction(transaction: Transaction): Int {
+    fun onNewBlockItem(blockItem: BlockItem): Int {
 
-        // If transaction already in pendingTransactions then we can skip
-        if (blockChain.pendingTransactions.any {pendingTrans -> pendingTrans.hash.toString() == transaction.hash.toString()}) return 0
-        // If transaction already in blockChain then we can skip
-        if (blockChain.chain.any { block -> block.transactions.any { transactionInBlock -> transactionInBlock.hash == transaction.hash } }) return 0
-        val validity = Validator.isTransactionValid(transaction, this)
+        // If blockItem already in pendingBlockItems then we can skip
+        if (blockChain.pendingBlockItems.any { pendingBlockItem -> pendingBlockItem.hash.toString() == blockItem.hash.toString()}) return 0
+        // If blockItem already in blockChain then we can skip
+        if (blockChain.chain.any { block -> block.blockItems.any { it.hash == blockItem.hash } }) return 0
+        val validity = Validator.isBlockItemValid(blockItem, this)
         if(validity == 0) {
-            blockChain.pendingTransactions.add(transaction)
-            nodeServer.broadcastNewTransaction(neighbours, transaction)
+            blockChain.pendingBlockItems.add(blockItem)
+            nodeServer.broadcastNewBlockItem(neighbours, blockItem)
             //TODO("CHECK IF BROADCASTING WORKS")
             return 0
         }
@@ -80,9 +80,9 @@ class Node(walletPassword: String, host: InetSocketAddress = InetSocketAddress("
 
             nodeServer.broadcastNewBlock(neighbours, block)
             //TODO("CHECK THAT BROADCASTING WORKS")
-            block.transactions.forEach {transaction ->
-                blockChain.pendingTransactions.removeAll {
-                    pendingTransaction -> transaction.hash.toString() == pendingTransaction.hash.toString() && blockChain.pendingTransactions.any {it.hash.toString() == pendingTransaction.hash.toString()}
+            block.blockItems.forEach { blockItem ->
+                blockChain.pendingBlockItems.removeAll {
+                    pendingBlockItem -> blockItem.hash.toString() == pendingBlockItem.hash.toString() && blockChain.pendingBlockItems.any {it.hash.toString() == pendingBlockItem.hash.toString()}
                 }
             }
             return true
@@ -108,11 +108,14 @@ class Node(walletPassword: String, host: InetSocketAddress = InetSocketAddress("
 
 
 
-    fun searchTransactionByHash(hash: Hash): Transaction?{
+    fun searchBlockItemByHash(hash: Hash): BlockItem?{
+        return searchBlockItemByHash(hash.value)
+    }
+    fun searchBlockItemByHash(hash: ByteArray): BlockItem?{
         for (block in blockChain.chain){
-            for (transaction in block.transactions){
-                if (transaction.hash == hash){
-                    return transaction
+            for (blockItem in block.blockItems){
+                if (blockItem.hash.value.contentEquals(hash)){
+                    return blockItem
                 }
             }
         }
@@ -125,23 +128,23 @@ class Node(walletPassword: String, host: InetSocketAddress = InetSocketAddress("
             if ((block.index - blockChain.chain.size) == blockChain.minimumBlockValidity) {
                 continue
             }
-            for (transaction in block.transactions + block.coinBaseTransaction){
-                if (transaction is CoinBaseTransaction){
-                    if (transaction.recipientAddress.address == address){
-                        balance+=transaction.amount
+            for (blockItem in block.blockItems + block.coinBaseTransaction){
+                if (blockItem is CoinBaseTransaction){
+                    if (blockItem.recipientAddress.address == address){
+                        balance+=blockItem.amount
                     }
                 }
-                if (transaction is MoneyTransaction){
-                    if (transaction.recipientAddress == address){
-                        balance+=transaction.amount
-                    } else if (transaction.senderAddress!= null && transaction.senderAddress.address == address){
-                        balance-=transaction.amount
+                if (blockItem is Transaction){
+                    if (blockItem.recipientAddress == address){
+                        balance+=blockItem.amount
+                    } else if (blockItem.senderAddress!= null && blockItem.senderAddress.address == address){
+                        balance-=blockItem.amount
                     }
                 }
-                if (transaction is DebugTransaction){
+                if (blockItem is DebugBlockItem){
                     if (!debug) continue
-                    if (transaction.recipientAddress.address == address){
-                        balance+=transaction.amount
+                    if (blockItem.recipientAddress.address == address){
+                        balance+=blockItem.amount
                     }
                 }
             }
@@ -150,10 +153,10 @@ class Node(walletPassword: String, host: InetSocketAddress = InetSocketAddress("
     }
     fun getPublicKeyByAddress(address: String): PublicKey?{
         for (block in blockChain.chain) {
-            for (transaction in block.transactions){
-                if (transaction is AddressTransaction){
-                    if (transaction.address.address == address){
-                        return transaction.address.publicKey
+            for (blockItem in block.blockItems){
+                if (blockItem is AddressBlockItem){
+                    if (blockItem.address.address == address){
+                        return blockItem.address.publicKey
                     }
                 }
             }
@@ -182,23 +185,23 @@ class Node(walletPassword: String, host: InetSocketAddress = InetSocketAddress("
                 if ((block.index - blockChain.chain.size) == blockChain.minimumBlockValidity) {
                     continue
                 }
-                for (transaction in block.transactions + block.coinBaseTransaction) {
-                    if (transaction is CoinBaseTransaction) {
-                        if (transaction.recipientAddress.address == address) {
-                            balance += transaction.amount
+                for (blockItem in block.blockItems + block.coinBaseTransaction) {
+                    if (blockItem is CoinBaseTransaction) {
+                        if (blockItem.recipientAddress.address == address) {
+                            balance += blockItem.amount
                         }
                     }
-                    if (transaction is MoneyTransaction) {
-                        if (transaction.recipientAddress == address) {
-                            balance += transaction.amount
-                        } else if (transaction.senderAddress != null && transaction.senderAddress.address == address) {
-                            balance -= transaction.amount
+                    if (blockItem is Transaction) {
+                        if (blockItem.recipientAddress == address) {
+                            balance += blockItem.amount
+                        } else if (blockItem.senderAddress != null && blockItem.senderAddress.address == address) {
+                            balance -= blockItem.amount
                         }
                     }
-                    if (transaction is DebugTransaction) {
+                    if (blockItem is DebugBlockItem) {
                         if (!debug) continue
-                        if (transaction.recipientAddress.address == address) {
-                            balance += transaction.amount
+                        if (blockItem.recipientAddress.address == address) {
+                            balance += blockItem.amount
                         }
                     }
                 }

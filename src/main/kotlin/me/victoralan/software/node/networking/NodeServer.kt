@@ -2,7 +2,7 @@ package me.victoralan.software.node.networking
 
 import me.victoralan.blockchain.Hash
 import me.victoralan.blockchain.Block
-import me.victoralan.blockchain.transactions.Transaction
+import me.victoralan.blockchain.transactions.BlockItem
 import me.victoralan.crypto.encoder.ObjectEncoder
 import me.victoralan.software.node.Node
 import me.victoralan.utils.NodeRequests
@@ -57,12 +57,12 @@ class NodeServer(var host: InetSocketAddress, private val node: Node) {
 
 
     /**
-     * Broadcasts to all nodes the transactions
-     * @param nodesAddresses A list of all the nodes you want to broadcast the transaction to
-     * @param transaction The transaction you want to broadcast
+     * Broadcasts to all nodes the blockItem
+     * @param nodesAddresses A list of all the nodes you want to broadcast the blockItem to
+     * @param blockItem The blockItem you want to broadcast
      * @return A validityList where each integer is the validity that each node has returned
      */
-    fun broadcastNewTransaction(nodesAddresses: ArrayList<InetSocketAddress>, transaction: Transaction): ArrayList<Int>{
+    fun broadcastNewBlockItem(nodesAddresses: ArrayList<InetSocketAddress>, blockItem: BlockItem): ArrayList<Int>{
         val validityList: ArrayList<Int> = ArrayList()
         for (nodeAddress in nodesAddresses){
 
@@ -76,9 +76,9 @@ class NodeServer(var host: InetSocketAddress, private val node: Node) {
             val outputStream = DataOutputStream(clientSocket.getOutputStream())
             outputStream.writeBoolean(false)
             val encoder = ObjectEncoder()
-            outputStream.writeInt(NodeRequests.NEW_TRANSACTION.value)
+            outputStream.writeInt(NodeRequests.NEW_BLOCKITEM.value)
             if (inputStream.readInt() == 0){
-                outputStream.writeBytes(encoder.encode(transaction))
+                outputStream.writeBytes(encoder.encode(blockItem))
                 validityList.add(inputStream.readInt())
             } else{
                 throw RuntimeException("Han error with the connection has occurred")
@@ -88,7 +88,7 @@ class NodeServer(var host: InetSocketAddress, private val node: Node) {
     }
     /**
      * Broadcasts to all nodes the block
-     * @param nodesAddresses A list of all the nodes you want to broadcast the transaction to
+     * @param nodesAddresses A list of all the nodes you want to broadcast the block to
      * @param block The block you want to broadcast
      * @return A list of booleans where each one is whether the node accepted the block or not
      */
@@ -123,8 +123,8 @@ class NodeServer(var host: InetSocketAddress, private val node: Node) {
         val outputStream = DataOutputStream(walletSocket.getOutputStream())
 
         when(inputStream.readInt()){
-            WalletRequests.NEW_TRANSACTION.value -> handleNewTransaction(walletSocket)
-            WalletRequests.CHECK_IF_TRANSACTION_VALIDATED.value -> handleCheckIfTransactionValidated(walletSocket)
+            WalletRequests.NEW_BLOCKITEM.value -> handleNewBlockItem(walletSocket)
+            WalletRequests.CHECK_IF_BLOCKITEM_VALIDATED.value -> handleCheckIfBlockItemValidated(walletSocket)
             WalletRequests.CHECK_BALANCE.value -> handleCheckBalance(walletSocket)
             // Invalid request if not one of above
             else -> outputStream.writeInt(-1)
@@ -134,14 +134,14 @@ class NodeServer(var host: InetSocketAddress, private val node: Node) {
         inputStream.close()
     }
 
-    private fun handleCheckIfTransactionValidated(walletSocket: Socket){
+    private fun handleCheckIfBlockItemValidated(walletSocket: Socket){
         val inputStream = DataInputStream(walletSocket.getInputStream())
         val outputStream = DataOutputStream(walletSocket.getOutputStream())
         outputStream.writeInt(0)
 
-        val hashOfTransaction =  Hash(inputStream.readAllBytesSent())
-        val transaction = node.searchTransactionByHash(hashOfTransaction)
-        outputStream.writeBoolean(transaction != null)
+        val hashOfBlockItem =  Hash(inputStream.readAllBytesSent())
+        val blockItem = node.searchBlockItemByHash(hashOfBlockItem)
+        outputStream.writeBoolean(blockItem != null)
     }
 
     private fun handleCheckBalance(walletSocket: Socket){
@@ -158,7 +158,7 @@ class NodeServer(var host: InetSocketAddress, private val node: Node) {
         val outputStream = DataOutputStream(nodeSocket.getOutputStream())
 
         when (inputStream.readInt()){
-            NodeRequests.NEW_TRANSACTION.value -> handleNewTransaction(nodeSocket)
+            NodeRequests.NEW_BLOCKITEM.value -> handleNewBlockItem(nodeSocket)
             NodeRequests.NEW_BLOCK.value -> handleNewBlock(nodeSocket)
             NodeRequests.GET_BLOCKCHAIN.value -> handleGetBlockChain(nodeSocket)
             //TODO(USE THE RESOLVE ISSUE)
@@ -166,18 +166,18 @@ class NodeServer(var host: InetSocketAddress, private val node: Node) {
         }
     }
 
-    private fun handleNewTransaction(clientSocket: Socket){
+    private fun handleNewBlockItem(clientSocket: Socket){
         val inputStream = DataInputStream(clientSocket.getInputStream())
         val outputStream = DataOutputStream(clientSocket.getOutputStream())
         outputStream.writeInt(0)
-        val transactionData = inputStream.readAllBytesSent()
+        val blockItemData = inputStream.readAllBytesSent()
 
 
         val decoder = ObjectEncoder()
-        val transaction = decoder.decode<Transaction>(transactionData)
-        val transactionValidity = node.onNewTransaction(transaction)
+        val blockItem = decoder.decode<BlockItem>(blockItemData)
+        val blockItemValidity = node.onNewBlockItem(blockItem)
 
-        outputStream.writeInt(transactionValidity)
+        outputStream.writeInt(blockItemValidity)
         Thread.sleep(100)
     }
     private fun handleNewBlock(nodeSocket: Socket){

@@ -4,9 +4,9 @@ import me.victoralan.blockchain.Hash
 import me.victoralan.crypto.SHA3
 import me.victoralan.software.wallet.Address
 
-class DebugTransaction(val recipientAddress: Address,
-                       val amount: Float,
-                       override var time: Long = System.nanoTime()) : Transaction {
+class DebugBlockItem(val recipientAddress: Address,
+                     val amount: Float,
+                     override var time: Long = System.nanoTime()) : BlockItem {
     override lateinit var hash: Hash
     init {
         hash = calculateHash()

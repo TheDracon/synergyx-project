@@ -1,7 +1,7 @@
 package me.victoralan.software.wallet.networking
 
 import me.victoralan.blockchain.Hash
-import me.victoralan.blockchain.transactions.Transaction
+import me.victoralan.blockchain.transactions.BlockItem
 import me.victoralan.crypto.encoder.ObjectEncoder
 import me.victoralan.utils.WalletRequests
 import java.io.DataInputStream
@@ -23,12 +23,12 @@ class WalletClient(var nodeAddress: InetSocketAddress?) {
         outputStream = DataOutputStream(socket.getOutputStream())
         outputStream!!.writeBoolean(true)
     }
-    fun isTransactionValid(hash: Hash): Boolean{
+    fun isBlockItemValid(hash: Hash): Boolean{
         connectToNode()
 
         if (inputStream != null && outputStream != null){
 
-            outputStream!!.writeInt(WalletRequests.CHECK_IF_TRANSACTION_VALIDATED.value)
+            outputStream!!.writeInt(WalletRequests.CHECK_IF_BLOCKITEM_VALIDATED.value)
             if (inputStream!!.readInt() == 0){
                 outputStream!!.writeBytes(hash.value)
                 return inputStream!!.readBoolean()
@@ -36,18 +36,18 @@ class WalletClient(var nodeAddress: InetSocketAddress?) {
         } else throw RuntimeException("Have to connected to node before sending any request")
     }
     /**
-     * To send a transaction to node
-     * @param transaction The transaction to send
-     * @return Whether the transaction is valid or not
+     * To send a blockItem to node
+     * @param blockItem The blockItem to send
+     * @return Whether the blockItem is valid or not
      */
-    fun sendTransaction(transaction: Transaction): Boolean{
+    fun sendBlockItem(blockItem: BlockItem): Boolean{
         connectToNode()
         if (inputStream != null && outputStream != null){
 
-            outputStream!!.writeInt(WalletRequests.NEW_TRANSACTION.value)
+            outputStream!!.writeInt(WalletRequests.NEW_BLOCKITEM.value)
             if (inputStream!!.readInt() == 0){
                 val encoder = ObjectEncoder()
-                val encoded: ByteArray = encoder.encode(transaction)
+                val encoded: ByteArray = encoder.encode(blockItem)
                 outputStream!!.writeBytes(encoded)
                 return inputStream!!.readInt() == 0
             } else throw RuntimeException("Han error with the connection has occurred")

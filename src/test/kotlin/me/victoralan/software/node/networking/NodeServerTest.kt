@@ -1,9 +1,9 @@
 package me.victoralan.software.node.networking
 
 import me.victoralan.blockchain.Block
-import me.victoralan.blockchain.transactions.DebugTransaction
-import me.victoralan.blockchain.transactions.MoneyTransaction
+import me.victoralan.blockchain.transactions.DebugBlockItem
 import me.victoralan.blockchain.transactions.Transaction
+import me.victoralan.blockchain.transactions.BlockItem
 import me.victoralan.software.node.Node
 import me.victoralan.software.wallet.Wallet
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -31,33 +31,33 @@ class NodeServerTest{
         wallet.createAddress(0)
         wallet2.createAddress(1)
         wallet3.createAddress(2)
-        val transactions = ArrayList<Transaction>()
-        transactions.add(DebugTransaction(wallet.addresses[0], 100f))
-        transactions.add(DebugTransaction(wallet2.addresses[0], 100f))
-        transactions.add(DebugTransaction(wallet3.addresses[0], 100f))
+        val blockItems = ArrayList<BlockItem>()
+        blockItems.add(DebugBlockItem(wallet.addresses[0], 100f))
+        blockItems.add(DebugBlockItem(wallet2.addresses[0], 100f))
+        blockItems.add(DebugBlockItem(wallet3.addresses[0], 100f))
 
-        val block = Block(transactions, System.nanoTime(), 1)
+        val block = Block(blockItems, System.nanoTime(), 1)
         node.onNewBlock(block)
 
-        var transaction = MoneyTransaction(wallet.addresses[0], wallet2.addresses[0].address, 10f, System.nanoTime())
+        var transaction = Transaction(wallet.addresses[0], wallet2.addresses[0].address, 10f, System.nanoTime())
         transaction = wallet.sign(transaction)
 
-        var transaction2 = MoneyTransaction(wallet2.addresses[0], wallet3.addresses[0].address, 5f, System.nanoTime())
+        var transaction2 = Transaction(wallet2.addresses[0], wallet3.addresses[0].address, 5f, System.nanoTime())
         transaction2 = wallet2.sign(transaction2)
 
-        var transaction3 = MoneyTransaction(wallet3.addresses[0], wallet.addresses[0].address, 1f, System.nanoTime())
+        var transaction3 = Transaction(wallet3.addresses[0], wallet.addresses[0].address, 1f, System.nanoTime())
         transaction3 = wallet3.sign(transaction3)
 
-        var transaction4 = MoneyTransaction(wallet3.addresses[0], wallet2.addresses[0].address, 1f, System.nanoTime())
+        var transaction4 = Transaction(wallet3.addresses[0], wallet2.addresses[0].address, 1f, System.nanoTime())
         transaction4 = wallet3.sign(transaction4)
 
         node.mineAvailable(node.miningWallet.addresses[0])
 
-        node.onNewTransaction(transaction)
-        node.onNewTransaction(transaction2)
-        node.onNewTransaction(transaction3)
+        node.onNewBlockItem(transaction)
+        node.onNewBlockItem(transaction2)
+        node.onNewBlockItem(transaction3)
 
-        node.onNewTransaction(transaction4)
+        node.onNewBlockItem(transaction4)
         Thread.sleep(1000)
         val node2 = Node("thedracon2", InetSocketAddress("localhost", 19102))
         node2.neighbours.add(InetSocketAddress("localhost", 19101))
@@ -67,22 +67,17 @@ class NodeServerTest{
         node2.start()
 
 
-        var transaction5 = MoneyTransaction(wallet.addresses[0], wallet2.addresses[0].address, 25f, System.nanoTime())
+        var transaction5 = Transaction(wallet.addresses[0], wallet2.addresses[0].address, 25f, System.nanoTime())
         transaction5 = wallet.sign(transaction5)
 
-        var transaction6 = MoneyTransaction(wallet.addresses[0], wallet2.addresses[0].address, 15f, System.nanoTime())
+        var transaction6 = Transaction(wallet.addresses[0], wallet2.addresses[0].address, 15f, System.nanoTime())
         transaction6 = wallet.sign(transaction6)
 
 
-        node.onNewTransaction(transaction5)
-        node.onNewTransaction(transaction6)
+        node.onNewBlockItem(transaction5)
+        node.onNewBlockItem(transaction6)
 
         assertEquals(node.blockChain.toString(), node2.blockChain.toString(), "Test 2")
-        assertTrue(node.blockChain.chain.any { it.transactions.contains(transaction3)}, "Test 3")
-    }
-
-    @Test
-    fun test2(){
-
+        assertTrue(node.blockChain.chain.any { it.blockItems.contains(transaction3)}, "Test 3")
     }
 }

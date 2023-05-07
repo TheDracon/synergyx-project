@@ -7,9 +7,9 @@ import com.fasterxml.jackson.databind.*
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize
 import com.fasterxml.jackson.databind.annotation.JsonSerialize
 import com.fasterxml.jackson.databind.node.ObjectNode
-import me.victoralan.blockchain.transactions.AddressTransaction
-import me.victoralan.blockchain.transactions.MoneyTransaction
+import me.victoralan.blockchain.transactions.AddressBlockItem
 import me.victoralan.blockchain.transactions.Transaction
+import me.victoralan.blockchain.transactions.BlockItem
 import me.victoralan.crypto.CryptoUtils
 import me.victoralan.crypto.ecdsa.ECDSA
 import me.victoralan.crypto.encoder.Base58
@@ -17,11 +17,9 @@ import me.victoralan.software.node.Node
 import me.victoralan.software.wallet.networking.WalletClient
 import net.glxn.qrgen.core.image.ImageType
 import net.glxn.qrgen.javase.QRCode
-import org.apache.xpath.operations.Bool
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.Serializable
-import java.net.InetAddress
 import java.net.InetSocketAddress
 import java.security.KeyFactory
 import java.security.KeyPair
@@ -43,13 +41,13 @@ class Wallet(val keyPair: KeyPair = ECDSA().generateKeyPair(),
             field = value
         }
 
-    val transactions: ArrayList<MoneyTransaction> = ArrayList()
+    val transactions: ArrayList<Transaction> = ArrayList()
     private var walletClient: WalletClient = WalletClient(_nodeAddress)
     var aesEncryptionKey = CryptoUtils().getKeyFromPassword(password)
     var currentValance: Float = 0f
     var userSettings: UserSettings = UserSettings()
     var trustedNodes: ArrayList<Node> = ArrayList()
-    var pendingTransaction: ArrayList<Transaction> = ArrayList()
+    var pendingBlockItems: ArrayList<BlockItem> = ArrayList()
     private var qrCodes: ArrayList<QRCode> = ArrayList()
     var addresses: ArrayList<Address> = ArrayList()
     // TODO("ADDRESS BOOK")
@@ -89,17 +87,17 @@ class Wallet(val keyPair: KeyPair = ECDSA().generateKeyPair(),
         nodeAddress = newNodeAddress
     }
     fun sendMoney(recipientAddress: String, senderAddress: Address, amount: Float): Boolean{
-        return sendMoney(MoneyTransaction(senderAddress, recipientAddress, amount, System.nanoTime()))
+        return sendMoney(Transaction(senderAddress, recipientAddress, amount, System.nanoTime()))
     }
-    fun sendMoney(transaction: MoneyTransaction): Boolean{
+    fun sendMoney(transaction: Transaction): Boolean{
 
         transaction.sign(privateKey = keyPair.private)
 
-        pendingTransaction.add(transaction)
-        return walletClient.sendTransaction(transaction)
+        pendingBlockItems.add(transaction)
+        return walletClient.sendBlockItem(transaction)
         // TODO("CHECK IF TRANSACTION SENDING WORKS")
     }
-    fun sign(transaction: MoneyTransaction): MoneyTransaction{
+    fun sign(transaction: Transaction): Transaction{
 
         var transactionClone = transaction
 
@@ -121,8 +119,8 @@ class Wallet(val keyPair: KeyPair = ECDSA().generateKeyPair(),
         val addressString = generateAddress(version)
         val address = Address(keyPair.public, addressString)
         addresses.add(address)
-        val addressTransaction = AddressTransaction(address)
-        return walletClient.sendTransaction(addressTransaction)
+        val addressBlockItem = AddressBlockItem(address)
+        return walletClient.sendBlockItem(addressBlockItem)
     }
 
     fun generateQRCodes(){
@@ -155,7 +153,7 @@ class WalletSerializer : JsonSerializer<Wallet>() {
         gen.writeNumberField("currentValance", value.currentValance)
         gen.writeObjectField("userSettings", value.userSettings)
         gen.writeObjectField("trustedNodes", value.trustedNodes)
-        gen.writeObjectField("pendingTransaction", value.pendingTransaction)
+        gen.writeObjectField("pendingBlockItems", value.pendingBlockItems)
         gen.writeObjectField("addresses", value.addresses)
         gen.writeObjectField("transactions", value.transactions)
         gen.writeObjectField("nodeAddressHost", value.nodeAddress.address.hostAddress)
@@ -175,7 +173,7 @@ class WalletDeserializer : JsonDeserializer<Wallet>() {
         val currentValance: Float = node.get("currentValance").floatValue()
         val userSettings: UserSettings = codec.treeToValue(node.get("userSettings"), UserSettings::class.java)
         val trustedNodes: ArrayList<Node> = codec.treeToValue(node.get("trustedNodes"), ArrayList::class.java) as ArrayList<Node>
-        val pendingTransaction: ArrayList<Transaction> = codec.treeToValue(node.get("pendingTransaction"), ArrayList::class.java) as ArrayList<Transaction>
+        val pendingBlockItems: ArrayList<BlockItem> = codec.treeToValue(node.get("pendingBlockItems"), ArrayList::class.java) as ArrayList<BlockItem>
         val addresses: ArrayList<Address> = node.get("addresses").map { addressNode -> codec.treeToValue(addressNode, Address::class.java) } as ArrayList<Address>
 
         val keyFactory: KeyFactory = KeyFactory.getInstance("EC")
@@ -188,12 +186,12 @@ class WalletDeserializer : JsonDeserializer<Wallet>() {
         val nodeAddressPort = node.get("nodeAddressPort").asInt()
         val wallet = Wallet(keyPair, "password", InetSocketAddress(nodeAddressHost, nodeAddressPort))
 
-        wallet.transactions.addAll(node.get("transactions").map { transactionNode -> codec.treeToValue(transactionNode, MoneyTransaction::class.java) })
+        wallet.transactions.addAll(node.get("transactions").map { transactionNode -> codec.treeToValue(transactionNode, Transaction::class.java) })
         wallet.currentValance = currentValance
         wallet.aesEncryptionKey = CryptoUtils().decodeSecretKey(aesEncryptionKey)
         wallet.userSettings = userSettings
         wallet.trustedNodes = trustedNodes
-        wallet.pendingTransaction = pendingTransaction
+        wallet.pendingBlockItems = pendingBlockItems
         wallet.addresses = addresses
         wallet.generateQRCodes()
         return wallet
